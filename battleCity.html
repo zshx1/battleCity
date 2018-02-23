@@ -1,0 +1,616 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Battle City</title>
+<style>
+@keyframes playerRoll{
+    from{background:url("./picture/robots_sprite.png") 0px 0px;}
+    to{background:url("./picture/robots_sprite.png") 0px 0px;}
+}
+@-webkit-keyframes playerRoll{
+    from{background:url("./picture/robots_sprite.png") 0px 0px;}
+    to{background:url("./picture/robots_sprite.png") 0px 0px;}
+}
+
+
+.DIAMOND{
+    position:absolute;
+    border:none;
+}
+.bossImage{
+    position:absolute;
+    border:none;
+    z-index:1;
+    background:url("./picture/robots_sprite.png") -647px -170px;
+}
+.bossDiamondImage{
+    width:16px;
+    height:16px;
+    position:absolute;
+    border:none;
+    z-index:1;
+    background:url("./picture/robots_sprite.png") -613px -170px;
+}
+.playerImage{
+    width:32px;
+    height:32px;
+    position:absolute;
+    z-index:1;
+    border:none;
+}
+.player1{
+    background:url("./picture/robots_sprite.png") -1px -1px;
+    <!---animation-name:playerRoll;
+    animation-duration:0.1s;
+    animation-iteration-count:infinite;-->
+}
+.player2{
+    background:url("./picture/robots_sprite.png") 0px -35px;
+}
+.monsterImage{
+    position:absolute;
+    border:none;
+    z-index:1;
+    background:url("./picture/robots_sprite.png") -137px -70px;
+}
+
+.bulletImage{
+    width:8px;
+    height:8px;
+    position:absolute;
+    z-index:1;
+    border:none;
+    color:yellow;
+}
+.soil{
+    background:url("./picture/robots_sprite.png") -613px -170px;
+    z-index:1;
+}
+.water{
+    background:url("./picture/robots_sprite.png") 0px -245px;
+    z-index:1;
+}
+.steel{
+    background:url("./picture/robots_sprite.png") -120px -220px;
+    z-index:1;
+}
+.lawn{
+    background:url("./picture/robots_sprite.png") -140px -240px;
+    z-index:10;
+}
+</style>
+</head>
+<body>
+<div id="screen" style="border:2px solid gray;width:640px;height:768px;margin:auto auto;position:relative;"></div>
+<script>
+var SCREEN = document.getElementById("screen");
+//定义方块数组,空白、泥土、海水、钢铁、草坪
+var DIAMOND = new Array("black", "soil", "lawn", "steel", "water");
+//定义所有标签数组，包含id、top和left
+var diamondsInfo = new Array();
+//定义特殊变量，用于设置是否可穿透
+var ISCHECKMOVE = "lawn", ISCHECKBULLETMOVE = "water";
+//定义各个方块在整个屏幕的占比
+var DIAMONDRATIO = {"black":0.25, "soil":0.4, "lawn":0.3, "steel":0.025, "water":0.025}
+//定义子弹移动距离，移动时间间隔(单位毫秒)
+var BULLETMOVEDISTANCE = 8, BULLETMOVETIME = 50, PLAYERMOVEDISTANCE = 16, PLAYERMOVETIME = 100;
+//定义阵营属性
+var REDCAMP = "red", BLUECAMP = "blue";
+var DIAMONDBLACK = "black", DIAMONDWATER = "water", DIAMONDSOIL = "soil", DIAMONDSTEEL = "steel", DIAMONDLAWN = "lawn";
+var DIAMOND_WIDTH = 16, DIAMOND_HEIGHT = 16, WIDE = 40, VLONG = 48, BULLET_WIDTH = 8, BULLET_HEIGHT = 8, PLAYER_WIDTH = 32, PLAYER_HEIGHT = 32, BOSS_WIDTH = 32, BOSS_HEIGHT = 32;
+var MONSTERINTERVAL = 96, MONSTERMOVEDISTANCE = 16, MONSTERMOVETIME = 500, MONSTEROPENFIRETIME = 1000, MONSTER_WIDTH = 32, MONSTER_HEIGHT = 32, MONSTERINITLEFT = 64;
+//定义子弹计时器,模块移动信息
+var BULLETTIMMER = null, MONSTERMOVETIMMER0 = null, MONSTERMOVETIMMER1 = null, MONSTERMOVETIMMER2 = null, MONSTERMOVETIMMER3 = null, MONSTERMOVETIMMER4 = null, MONSTERMOVETIMMER5 = null;
+var MONSTEROPENFIRE0 = null, MONSTEROPENFIRE1 = null, MONSTEROPENFIRE2 = null, MONSTEROPENFIRE3 = null, MONSTEROPENFIRE4 = null, MONSTEROPENFIRE5 = null;
+var MONSTERBULLETTIMMER0 = null, MONSTERBULLETTIMMER1 = null, MONSTERBULLETTIMMER2 = null, MONSTERBULLETTIMMER3 = null, MONSTERBULLETTIMMER4 = null, MONSTERBULLETTIMMER5 = null;
+var BULLET = "BULLET", PLAYER = "PLAYER", MONSTER = "MONSTER",DIRECTIONRANDOM = 0.25;
+var testcount = 0;
+var RANDOMSEED = 10, INITRANDOMVALUE = 0, MOVENUMBER = 0;
+function createDiamond(){
+    var diamondsCounter = 0;
+    for(var i = 2;i < VLONG;){
+        for(var j = 0;j < WIDE;){
+            var diamondString = notarizeRatio();
+            if("black" != diamondString){
+                if((i > VLONG - 6 && j < WIDE / 2 - 6) || (i > VLONG - 6 && j > WIDE / 2 + 4) || i <= VLONG - 6){
+                    for(var l = 0;l < 2;l++){
+                        for(var k = 0;k < 2;k++){
+                            var diamondImage = document.createElement("img");
+                            diamondImage.setAttribute("class", diamondString + " DIAMOND");
+                            diamondImage.setAttribute("id", "DIAMOND" + diamondsCounter);
+                            diamondImage.style.top = ((i + k) * DIAMOND_HEIGHT) + "px";
+                            diamondImage.style.left = ((j + l) * DIAMOND_WIDTH) + "px";
+                            diamondImage.width = DIAMOND_WIDTH;
+                            diamondImage.height = DIAMOND_HEIGHT;
+                            diamondImage.setAttribute("diamondId", diamondsCounter);
+                            SCREEN.appendChild(diamondImage);
+                            diamondsInfo[diamondsCounter] = {"id":"DIAMOND" + diamondsCounter,"top":((i + k) * DIAMOND_HEIGHT),"left":((j + l) * DIAMOND_WIDTH),"isCheckPlayerMove":(ISCHECKMOVE == diamondString?false:true),"ISCHECKBULLETMOVE":((ISCHECKMOVE == diamondString || ISCHECKBULLETMOVE == diamondString)?false:true),"camp":null};
+                            diamondsCounter++;
+                        }
+                    }
+                }
+            }
+            j += 2;
+        }
+        i += 2;
+    }
+    for(var i = 0;i < 3;i++){
+        for(var j = 0;j < 4;j++){
+            if(i < 1 || (i >= 1 && j < 1) || (i >= 1 && j > 2)){
+                var bossDiamondImage = document.createElement("img");
+                bossDiamondImage.setAttribute("class","soil DIAMOND");
+                bossDiamondImage.setAttribute("id", "DIAMOND" + diamondsCounter);
+                bossDiamondImage.style.top = ((VLONG - 3 + i) * DIAMOND_HEIGHT) + "px";
+                bossDiamondImage.style.left = ((WIDE / 2 - 2 + j) * DIAMOND_WIDTH) + "px";
+                bossDiamondImage.width = DIAMOND_WIDTH;
+                bossDiamondImage.height = DIAMOND_HEIGHT;
+                bossDiamondImage.setAttribute("diamondId", diamondsCounter);
+                SCREEN.appendChild(bossDiamondImage);
+                diamondsInfo[diamondsCounter] = {"id":"DIAMOND" + diamondsCounter,"top":((VLONG - 3 + i) * DIAMOND_HEIGHT),"left":((WIDE / 2 - 2 + j) * DIAMOND_WIDTH),"isCheckPlayerMove":true,"ISCHECKBULLETMOVE":true,"camp":null};
+                diamondsCounter++;
+            }
+        }
+    }
+    var bossImage = document.createElement("img");
+    bossImage.setAttribute("class", "bossImage");
+    bossImage.setAttribute("id", "bossImage");
+    bossImage.style.top = ((VLONG - 2) * DIAMOND_HEIGHT) + "px";
+    bossImage.style.left = ((WIDE / 2 - 1) * DIAMOND_WIDTH) + "px";
+    bossImage.width = BOSS_WIDTH;
+    bossImage.height = BOSS_HEIGHT;
+    bossImage.setAttribute("diamondId", diamondsCounter);
+    diamondsInfo[diamondsCounter] = {"id":"DIAMOND" + diamondsCounter,"top":((VLONG - 3 + i) * DIAMOND_HEIGHT),"left":((WIDE / 2 - 2 + j) * DIAMOND_WIDTH),"isCheckPlayerMove":true,"ISCHECKBULLETMOVE":true,"camp":null};
+    diamondsCounter++;
+    SCREEN.appendChild(bossImage);
+    return diamondsCounter;
+}
+
+window.onload = function(){
+    diamondsCount = createDiamond();
+    createPlayer(1, diamondsCount);
+    for(var i = 0;i < 6;i++){
+        diamondsCount++;
+        createMonster(i, diamondsCount);
+    }
+};
+
+function createMonster(monsterId, counter){
+    if(monsterId >= 0 && monsterId <= 5){
+        var monsterImage = document.createElement("img");
+        monsterImage.setAttribute("class", "monsterImage");
+        monsterImage.setAttribute("direction", "S");
+        monsterImage.setAttribute("bulletNum", 0);
+        monsterImage.setAttribute("describe", MONSTER);
+        monsterImage.setAttribute("id", "monster" + monsterId);
+        monsterImage.setAttribute("distance", MONSTERMOVEDISTANCE);
+        monsterImage.setAttribute("diamondId", counter);
+        monsterImage.setAttribute("camp", BLUECAMP);
+        monsterImage.setAttribute("moveTime", MONSTERMOVETIME);
+        monsterImage.setAttribute("openFireTime", MONSTEROPENFIRETIME);
+        monsterImage.style.top = "0px";
+        monsterImage.style.left = (monsterId * MONSTERINTERVAL + MONSTERINITLEFT) + "px";
+        monsterImage.width = MONSTER_WIDTH;
+        monsterImage.height = MONSTER_HEIGHT;
+        diamondsInfo[counter] = {"id":"DIAMOND" + counter,"top":0,"left":(monsterId * MONSTERINTERVAL),"isCheckPlayerMove":true,"ISCHECKBULLETMOVE":true,"camp":BLUECAMP};
+        SCREEN.appendChild(monsterImage);
+        switch(monsterId){
+            case 0:
+                monsterMoveTimmer0 = window.setInterval(function(){return monsterAutoMove(monsterImage);}, Number(monsterImage.getAttribute("moveTime")));
+                monsterOpenFire0 = window.setInterval(function(){return openFire(monsterImage, "AUTO", MONSTERBULLETTIMMER0)}, Number(monsterImage.getAttribute("openFireTime")));
+                break;
+            case 1:
+                monsterMoveTimmer1 = window.setInterval(function(){return monsterAutoMove(monsterImage);}, Number(monsterImage.getAttribute("moveTime")));
+                monsterOpenFire1 = window.setInterval(function(){return openFire(monsterImage, "AUTO", MONSTERBULLETTIMMER1)}, Number(monsterImage.getAttribute("openFireTime")));
+                break;
+            case 2:
+                monsterMoveTimmer2 = window.setInterval(function(){return monsterAutoMove(monsterImage);}, Number(monsterImage.getAttribute("moveTime")));
+                monsterOpenFire2 = window.setInterval(function(){return openFire(monsterImage, "AUTO", MONSTERBULLETTIMMER2)}, Number(monsterImage.getAttribute("openFireTime")));
+                break;
+            case 3:
+                monsterMoveTimmer3 = window.setInterval(function(){return monsterAutoMove(monsterImage);}, Number(monsterImage.getAttribute("moveTime")));
+                monsterOpenFire3 = window.setInterval(function(){return openFire(monsterImage, "AUTO", MONSTERBULLETTIMMER3)}, Number(monsterImage.getAttribute("openFireTime")));
+                break;
+            case 4:
+                monsterMoveTimmer4 = window.setInterval(function(){return monsterAutoMove(monsterImage);}, Number(monsterImage.getAttribute("moveTime")));
+                monsterOpenFire4 = window.setInterval(function(){return openFire(monsterImage, "AUTO", MONSTERBULLETTIMMER4)}, Number(monsterImage.getAttribute("openFireTime")));
+                break;
+            case 5:
+                monsterMoveTimmer5 = window.setInterval(function(){return monsterAutoMove(monsterImage);}, Number(monsterImage.getAttribute("moveTime")));
+                monsterOpenFire5 = window.setInterval(function(){return openFire(monsterImage, "AUTO", MONSTERBULLETTIMMER5)}, Number(monsterImage.getAttribute("openFireTime")));
+                break;
+        }
+    }
+}
+
+function createPlayer(i, counter){
+    i = (i==1?1:2);
+    for(var j = 0;j < i;j++){
+        var playerImage = document.createElement("img");
+        playerImage.setAttribute("class", "player" + (j + 1) + " playerImage");
+        playerImage.setAttribute("direction", "W");
+        playerImage.setAttribute("bulletNum", 0);
+        playerImage.setAttribute("describe", PLAYER);
+        playerImage.setAttribute("id", "player" + (j + 1));
+        playerImage.setAttribute("distance", PLAYERMOVEDISTANCE);
+        playerImage.setAttribute("diamondId", counter);
+        playerImage.setAttribute("camp", REDCAMP);
+        playerImage.style.top = ((VLONG - 2) * DIAMOND_HEIGHT) + "px";
+        playerImage.style.left = ((WIDE / 2 - 2 + (j == 0?-2:4)) * DIAMOND_WIDTH) + "px";
+        playerImage.width = PLAYER_WIDTH;
+        playerImage.height = PLAYER_HEIGHT;
+        diamondsInfo[counter] = {"id":"DIAMOND" + counter,"top":((VLONG - 2) * DIAMOND_HEIGHT),"left":((WIDE / 2 - 2 + (j == 0?-2:4)) * DIAMOND_WIDTH),"isCheckPlayerMove":true,"ISCHECKBULLETMOVE":true,"camp":REDCAMP};
+        SCREEN.appendChild(playerImage);
+    }
+}
+
+document.onkeydown = function(event){
+    var keyNum = window.event?event.keyCode:event.which;
+    var keyString = String.fromCharCode(keyNum).toUpperCase();
+    var play1 = document.getElementById("player1");
+    move(play1, keyString);
+    openFire(play1, keyString, BULLETTIMMER);
+}
+
+function notarizeRatio(){
+    var randomNum = Math.random();
+    if(randomNum < DIAMONDRATIO.black)
+        return DIAMONDBLACK;
+    else if(randomNum >= DIAMONDRATIO.black && randomNum < (DIAMONDRATIO.soil + DIAMONDRATIO.black))
+        return DIAMONDSOIL;
+    else if(randomNum >= (DIAMONDRATIO.soil + DIAMONDRATIO.black) && randomNum < (DIAMONDRATIO.soil + DIAMONDRATIO.black + DIAMONDRATIO.lawn))
+        return DIAMONDLAWN;
+    else if(randomNum >= (DIAMONDRATIO.soil + DIAMONDRATIO.black + DIAMONDRATIO.lawn) && randomNum < (DIAMONDRATIO.soil + DIAMONDRATIO.black + DIAMONDRATIO.lawn + DIAMONDRATIO.steel))
+        return DIAMONDSTEEL;
+    else if(randomNum >= (DIAMONDRATIO.soil + DIAMONDRATIO.black + DIAMONDRATIO.lawn + DIAMONDRATIO.steel) && randomNum < (DIAMONDRATIO.soil + DIAMONDRATIO.black + DIAMONDRATIO.lawn + DIAMONDRATIO.steel + DIAMONDRATIO.water))
+        return DIAMONDWATER;
+    return DIAMONDBLACK;
+}
+
+function openFire(obj, direction, timmer){
+    if((direction == 'J' && obj.getAttribute("bulletNum") == 0) || (direction == 'AUTO' && obj.getAttribute("bulletNum") == 0)){
+        var bulletImage = document.createElement("img");
+        bulletImage.setAttribute("class", "bulletImage");
+        bulletImage.setAttribute("describe", BULLET);
+        bulletImage.setAttribute("distance", BULLETMOVEDISTANCE);
+        bulletImage.setAttribute("BULLETMOVETIME", BULLETMOVETIME);
+        bulletImage.setAttribute("camp", obj.getAttribute("camp"));
+        bulletImage.width = BULLET_WIDTH;
+        bulletImage.height = BULLET_HEIGHT;
+        switch(obj.getAttribute("direction")){
+            case "W":
+                bulletImage.style.left = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) + PLAYER_WIDTH / 2 - BULLET_WIDTH / 2) + "px";
+                bulletImage.style.top = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) - BULLET_HEIGHT) + "px";
+                bulletImage.style.background = "url('./picture/robots_sprite.png') 0px -170px";
+                bulletImage.setAttribute("direction", "W");
+                break;
+            case "A":
+                bulletImage.style.left = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) - BULLET_WIDTH) + "px";
+                bulletImage.style.top = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) + PLAYER_HEIGHT / 2 - BULLET_HEIGHT / 2) + "px";
+                bulletImage.style.background = "url('./picture/robots_sprite.png') -0px -180px";
+                bulletImage.setAttribute("direction", "A");
+                break;
+            case "S":
+                bulletImage.style.left = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) + PLAYER_WIDTH / 2 - BULLET_WIDTH / 2) + "px";
+                bulletImage.style.top = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) + PLAYER_HEIGHT) + "px";
+                bulletImage.style.background = "url('./picture/robots_sprite.png') -10px -172px";
+                bulletImage.setAttribute("direction", "S");
+                break;
+            case "D":
+                bulletImage.style.left = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) + PLAYER_WIDTH) + "px";
+                bulletImage.style.top = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) + PLAYER_HEIGHT / 2 - BULLET_HEIGHT / 2) + "px";
+                bulletImage.style.background = "url('./picture/robots_sprite.png') -12px -180px";
+                bulletImage.setAttribute("direction", "D");
+                break;
+        }
+        SCREEN.appendChild(bulletImage);
+        obj.setAttribute("bulletNum", 1);
+        timmer = window.setInterval(function(){return bulletAutoMove(bulletImage,timmer,obj);}, Number(bulletImage.getAttribute("BULLETMOVETIME")));
+    }
+}
+
+function clearTimer(timer){
+    if(timer)
+        window.clearInterval(timer);
+}
+
+function changeDirection(){
+    var randomNum = Math.random();
+    if(randomNum >= 0 && randomNum < DIRECTIONRANDOM)
+        return "W";
+    else if(randomNum >= DIRECTIONRANDOM && randomNum < DIRECTIONRANDOM * 2)
+        return "A";
+    else if(randomNum >= DIRECTIONRANDOM * 2 && randomNum < DIRECTIONRANDOM * 3)
+        return "S";
+    else if(randomNum >= DIRECTIONRANDOM * 3 && randomNum <= DIRECTIONRANDOM * 4)
+        return "D"
+}
+
+function getRandomNumber(num){
+    return Math.floor(Math.random() * num) + 1;
+}
+
+function changeDirectionDiffLast(obj, distance, lastDirection){
+    var vNowDirection = "";
+    do{
+        vNowDirection = changeDirection();
+        vCheckMove = checkMove(obj, vNowDirection, DIAMOND_HEIGHT, DIAMOND_WIDTH);
+        vCheckIsBoundary = checkIsBoundary(obj, distance, vNowDirection);
+    }while(!(vCheckMove.isMove && vCheckIsBoundary && vNowDirection != lastDirection));
+    return vNowDirection
+}
+
+function monsterAutoMove(obj){
+    var vheight = Number(obj.height), vwide = Number(obj.width), vMonsterMoveDistance = Number(obj.getAttribute("distance"));
+    var direction = obj.getAttribute("direction");
+    var vMonsterDiamondId = Number(obj.getAttribute("diamondId"));
+    var distance = Number(obj.getAttribute("distance"));
+    var vCheckMove = checkMove(obj, direction, DIAMOND_HEIGHT, DIAMOND_WIDTH);
+    var vCheckIsBoundary = checkIsBoundary(obj, distance, direction);
+    if(!INITRANDOMVALUE){
+        INITRANDOMVALUE = getRandomNumber(RANDOMSEED);
+        direction = changeDirectionDiffLast(obj, distance, direction)
+    }
+    if(!vCheckMove.isMove || !vCheckIsBoundary){
+        do{
+            direction = changeDirection();
+            vCheckMove = checkMove(obj, direction, DIAMOND_HEIGHT, DIAMOND_WIDTH);
+            vCheckIsBoundary = checkIsBoundary(obj, distance, direction);
+        }while(!(vCheckMove.isMove && vCheckIsBoundary));
+    }
+    switch(direction){
+        case 'W':
+                obj.style.background = "url('./picture/robots_sprite.png') -1px -70px";
+                obj.setAttribute("direction", "W");
+                vMoveDistance = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) - vMonsterMoveDistance);
+                obj.style.top = vMoveDistance + "px";
+                diamondsInfo[vMonsterDiamondId].top = vMoveDistance;
+            break;
+        case 'A':
+                obj.style.background = "url('./picture/robots_sprite.png') -205px -70px";
+                obj.setAttribute("direction", "A");
+                vMoveDistance = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) - vMonsterMoveDistance);
+                obj.style.left = vMoveDistance + "px";
+                diamondsInfo[vMonsterDiamondId].left = vMoveDistance;
+            break;
+        case 'S':
+                obj.style.background = "url('./picture/robots_sprite.png') -137px -70px";
+                obj.setAttribute("direction", "S");
+                vMoveDistance = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) + vMonsterMoveDistance);
+                obj.style.top = vMoveDistance + "px";
+                diamondsInfo[vMonsterDiamondId].top = vMoveDistance;
+            break;
+        case 'D':
+                obj.style.background = "url('./picture/robots_sprite.png') -69px -70px";
+                obj.setAttribute("direction", "D");
+                vMoveDistance = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) + vMonsterMoveDistance);
+                obj.style.left = vMoveDistance + "px";
+                diamondsInfo[vMonsterDiamondId].left = vMoveDistance;
+            break;
+    }
+    INITRANDOMVALUE--;
+}
+
+function bulletAutoMove(obj, timer, PLAYER){
+    var vheight = Number(obj.height), vwide = Number(obj.width);
+    var direction = obj.getAttribute("direction");
+    var distance = Number(obj.getAttribute("distance"));
+    var vCheckMove = checkMove(obj, direction, BULLET_HEIGHT, BULLET_WIDTH), vDiamond = null, vCheckAdjacentDiamond = null;
+    var vCheckBossIsDied = checkBossIsDied(obj);
+    var vCheckIsBoundary = checkIsBoundary(obj, distance, direction);
+    switch(direction){
+        case "W":
+            if(vCheckMove.isMove && !vCheckBossIsDied && vCheckIsBoundary)
+                obj.style.top = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) - distance) + "px";
+            else{
+                clearTimer(timer);
+                if(obj.getAttribute("describe") == BULLET)
+                    PLAYER.setAttribute("bulletNum", 0);
+                if(!vCheckMove.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckMove.idNum));
+                    changeDiamondsValue(vCheckMove.idNum);
+                    vCheckAdjacentDiamond = checkAdjacentDiamond(vCheckMove.idNum, obj, direction, vheight, vwide);
+                }
+                if(vCheckAdjacentDiamond != null && !vCheckAdjacentDiamond.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckAdjacentDiamond.idNum));
+                    changeDiamondsValue(vCheckAdjacentDiamond.idNum);
+                }
+                SCREEN.removeChild(obj);
+            }
+            break;
+        case "A":
+            if(vCheckMove.isMove && !vCheckBossIsDied && vCheckIsBoundary)
+                obj.style.left = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) - distance) + "px";
+            else{
+                clearTimer(timer);
+                if(obj.getAttribute("describe") == BULLET)
+                    PLAYER.setAttribute("bulletNum", 0);
+                if(!vCheckMove.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckMove.idNum));
+                    changeDiamondsValue(vCheckMove.idNum);
+                    vCheckAdjacentDiamond = checkAdjacentDiamond(vCheckMove.idNum, obj, direction, vheight, vwide);
+                }
+                if(vCheckAdjacentDiamond != null && !vCheckAdjacentDiamond.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckAdjacentDiamond.idNum));
+                    changeDiamondsValue(vCheckAdjacentDiamond.idNum);
+                }
+                SCREEN.removeChild(obj);
+            }
+            break;
+        case "S":
+            if(vCheckMove.isMove && !vCheckBossIsDied && vCheckIsBoundary)
+                obj.style.top = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) + distance) + "px";
+            else{
+                clearTimer(timer);
+                if(obj.getAttribute("describe") == BULLET)
+                    PLAYER.setAttribute("bulletNum", 0);
+                if(!vCheckMove.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckMove.idNum));
+                    changeDiamondsValue(vCheckMove.idNum);
+                    vCheckAdjacentDiamond = checkAdjacentDiamond(vCheckMove.idNum, obj, direction, vheight, vwide);
+                }
+                if(vCheckAdjacentDiamond != null && !vCheckAdjacentDiamond.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckAdjacentDiamond.idNum));
+                    changeDiamondsValue(vCheckAdjacentDiamond.idNum);
+                }
+                SCREEN.removeChild(obj);
+            }
+            break;
+        case "D":
+            if(vCheckMove.isMove  && !vCheckBossIsDied && vCheckIsBoundary)
+                obj.style.left = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) + distance) + "px";
+            else{
+                clearTimer(timer);
+                if(obj.getAttribute("describe") == BULLET)
+                    PLAYER.setAttribute("bulletNum", 0);
+                if(!vCheckMove.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckMove.idNum));
+                    changeDiamondsValue(vCheckMove.idNum);
+                    vCheckAdjacentDiamond = checkAdjacentDiamond(vCheckMove.idNum, obj, direction, vheight, vwide);
+                }
+                if(vCheckAdjacentDiamond != null && !vCheckAdjacentDiamond.isMove){
+                    SCREEN.removeChild(document.getElementById(vCheckAdjacentDiamond.idNum));
+                    changeDiamondsValue(vCheckAdjacentDiamond.idNum);
+                }
+                SCREEN.removeChild(obj);
+            }
+            break;
+    }
+}
+
+function move(obj, direction){
+    var vheight = Number(obj.height), vwide = Number(obj.width), vPlayerMoveDistance = Number(obj.getAttribute("distance"));
+    var vCheckMove = checkMove(obj, direction, DIAMOND_HEIGHT, DIAMOND_WIDTH);
+    var vPlayerDiamondId = Number(obj.getAttribute("diamondId"));
+    var vCheckIsBoundary = checkIsBoundary(obj,vPlayerMoveDistance, direction);
+    var vMoveDistance = 0;
+    switch(direction){
+        case 'W':
+                obj.style.background = "url('./picture/robots_sprite.png') -1px -1px";
+                obj.setAttribute("direction", "W");
+                if(vCheckMove.isMove && vCheckIsBoundary){
+                    vMoveDistance = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) - vPlayerMoveDistance);
+                    obj.style.top = vMoveDistance + "px";
+                    diamondsInfo[vPlayerDiamondId].top = vMoveDistance;
+                }
+            break;
+        case 'A':
+                obj.style.background = "url('./picture/robots_sprite.png') -205px -1px";
+                obj.setAttribute("direction", "A");
+                if(vCheckMove.isMove && vCheckIsBoundary){
+                    vMoveDistance = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) - vPlayerMoveDistance);
+                    obj.style.left = vMoveDistance + "px";
+                    diamondsInfo[vPlayerDiamondId].left = vMoveDistance;
+                }
+            break;
+        case 'S':
+                obj.style.background = "url('./picture/robots_sprite.png') -137px -1px";
+                obj.setAttribute("direction", "S");
+                if(vCheckMove.isMove && vCheckIsBoundary){
+                    vMoveDistance = (Number(obj.style.top.substring(0,obj.style.top.length - 2)) + vPlayerMoveDistance);
+                    obj.style.top = vMoveDistance + "px";
+                    diamondsInfo[vPlayerDiamondId].top = vMoveDistance;
+                }
+            break;
+        case 'D':
+                obj.style.background = "url('./picture/robots_sprite.png') -69px -1px";
+                obj.setAttribute("direction", "D");
+                if(vCheckMove.isMove && vCheckIsBoundary){
+                    vMoveDistance = (Number(obj.style.left.substring(0,obj.style.left.length - 2)) + vPlayerMoveDistance);
+                    obj.style.left = vMoveDistance + "px";
+                    diamondsInfo[vPlayerDiamondId].left = vMoveDistance;
+                }
+            break;
+    }
+}
+
+function checkMove(obj, direction, vheight, vwide){
+    var checkInfo = {"isMove":true,"idNum":0};
+    for(x in diamondsInfo){
+        checkInfo = checkMoveInfo(obj, direction, x, checkInfo, vheight, vwide);
+        if(!checkInfo.isMove)
+            break;
+    }
+    return checkInfo;
+}
+
+function checkMoveInfo(obj, direction, x, checkInfo, vheight, vwide){
+    var objTop = 0, objLeft = 0, objCamp = null, vdescribe = "";
+    vdescribe = obj.getAttribute("describe");
+    objTop = Number(obj.style.top.substring(0,obj.style.top.length - 2));
+    objLeft = Number(obj.style.left.substring(0,obj.style.left.length - 2));
+    objCamp = obj.getAttribute("camp");
+    switch(direction){
+            case 'W':
+                if((diamondsInfo[x].isCheckPlayerMove && (diamondsInfo[x].top == objTop - vheight) && (diamondsInfo[x].left == objLeft) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].isCheckPlayerMove && (diamondsInfo[x].top == objTop - vheight) && (diamondsInfo[x].left == objLeft + vwide) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop - vheight) && (diamondsInfo[x].left == objLeft - vwide * 1.5) && (diamondsInfo[x].camp != objCamp)  && (vdescribe == BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop - vheight) && (diamondsInfo[x].left == objLeft + vwide / 2) && (diamondsInfo[x].camp != objCamp) && (vdescribe == BULLET))){
+                    checkInfo.isMove = false;
+                    checkInfo.idNum = diamondsInfo[x].id;
+                }
+                break;
+            case 'A':
+                if((diamondsInfo[x].isCheckPlayerMove &&(diamondsInfo[x].top == objTop) && (diamondsInfo[x].left == objLeft - vwide) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].isCheckPlayerMove && (diamondsInfo[x].top == objTop + vheight) && (diamondsInfo[x].left == objLeft - vwide) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop - vheight * 1.5) && (diamondsInfo[x].left == objLeft - vwide) && (diamondsInfo[x].camp != objCamp) && (vdescribe == BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop + vheight / 2) && (diamondsInfo[x].left == objLeft - vwide) && (diamondsInfo[x].camp != objCamp) && (vdescribe == BULLET))){
+                    checkInfo.isMove = false;
+                    checkInfo.idNum = diamondsInfo[x].id;
+                }
+                break;
+            case 'S':
+                if((diamondsInfo[x].isCheckPlayerMove && (diamondsInfo[x].top == objTop + vheight * 2) && (diamondsInfo[x].left == objLeft) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].isCheckPlayerMove && (diamondsInfo[x].top == objTop + vheight * 2) && (diamondsInfo[x].left == objLeft + vwide) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop) && (diamondsInfo[x].left == objLeft - vwide * 1.5) && (diamondsInfo[x].camp != objCamp) && (vdescribe == BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop) && (diamondsInfo[x].left == objLeft + vwide / 2) && (diamondsInfo[x].camp != objCamp) && (vdescribe == BULLET))){
+                    checkInfo.isMove = false;
+                    checkInfo.idNum = diamondsInfo[x].id;
+                }
+                break;
+            case 'D':
+                if((diamondsInfo[x].isCheckPlayerMove && (diamondsInfo[x].top == objTop) && (diamondsInfo[x].left == objLeft + vwide * 2) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].isCheckPlayerMove && (diamondsInfo[x].top == objTop + vheight) && (diamondsInfo[x].left == objLeft + vwide * 2) && (diamondsInfo[x].camp != objCamp) && (vdescribe != BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop - vheight * 1.5) && (diamondsInfo[x].left == objLeft) && (diamondsInfo[x].camp != objCamp) && (vdescribe == BULLET)) || (diamondsInfo[x].ISCHECKBULLETMOVE && (diamondsInfo[x].top == objTop + vheight / 2) && (diamondsInfo[x].left == objLeft) && (diamondsInfo[x].camp != objCamp) && (vdescribe == BULLET))){
+                    checkInfo.isMove = false;
+                    checkInfo.idNum = diamondsInfo[x].id;
+                }
+                break;
+        }
+    return checkInfo;
+}
+
+function checkAdjacentDiamond(idNum, obj, direction){
+    var vIdNum = Number(idNum.substr(7,idNum.length - 7).trim());
+    var checkInfo = {"isMove":true,"idNum":0};
+    var vheight = Number(obj.getAttribute("height"));
+    var vwide = Number(obj.getAttribute("width"));
+    for(var i = vIdNum - WIDE * 2;i < vIdNum + WIDE * 2;i++){
+        if(i < diamondsInfo.length && i >= 0)
+            checkInfo = checkMoveInfo(obj, direction, i, checkInfo, vheight, vwide);
+        if(!checkInfo.isMove)
+            break;
+    }
+    return checkInfo;
+}
+
+function checkIsBoundary(obj, moveDistance, direction){
+    var objTop = 0, objLeft = 0, vheight = 0, vwide = 0;
+    objTop = Number(obj.style.top.substring(0,obj.style.top.length - 2));
+    objLeft = Number(obj.style.left.substring(0,obj.style.left.length - 2));
+    vwide = Number(obj.getAttribute("width"));
+    vheight = Number(obj.getAttribute("height"));
+    if(((objTop + (direction == 'W'?(-moveDistance):0)) >= 0) && ((objLeft + (direction == 'A'?(-moveDistance):0)) >= 0) && ((objTop + vheight + (direction == 'S'?(moveDistance):0)) <= VLONG * DIAMOND_HEIGHT) && ((objLeft + vwide + (direction == 'D'?(moveDistance):0)) <= WIDE * DIAMOND_WIDTH))
+        return true;
+    return false;
+}
+
+function checkBossIsDied(obj){
+    var objTop = 0, objLeft = 0;
+    objTop = Number(obj.style.top.substring(0,obj.style.top.length - 2));
+    objLeft = Number(obj.style.left.substring(0,obj.style.left.length - 2));
+    if(obj.getAttribute("describe") == "BULLET")
+        if((objTop == ((VLONG - 2) * DIAMOND_HEIGHT) && objLeft >= ((WIDE / 2 - 1) * DIAMOND_WIDTH - BULLET_WIDTH) && objLeft <= ((WIDE / 2 - 1) * DIAMOND_WIDTH + BOSS_WIDTH)) || (objLeft == ((WIDE / 2 - 1) * DIAMOND_WIDTH) && objTop >= ((VLONG - 2) * DIAMOND_HEIGHT - BULLET_HEIGHT / 2) && objTop <= ((VLONG - 2) * DIAMOND_HEIGHT + BOSS_HEIGHT)) || (objLeft == ((WIDE / 2 - 1) * DIAMOND_WIDTH + BOSS_WIDTH - BULLET_WIDTH) && objTop >= ((VLONG - 2) * DIAMOND_HEIGHT - BULLET_HEIGHT / 2) && objTop <= ((VLONG - 2) * DIAMOND_HEIGHT + BOSS_HEIGHT))){
+            document.getElementById("bossImage").style.background = 'url("./picture/robots_sprite.png") -680px -170px';
+            return true;
+        }
+    return false;
+}
+
+function changeDiamondsValue(idNum){
+    var vIdNum = Number(idNum.substr(7,idNum.length - 7).trim());
+    diamondsInfo[vIdNum].ISCHECKBULLETMOVE = false;
+    diamondsInfo[vIdNum].isCheckPlayerMove = false;
+}
+</script>
+</body>
+</html>
